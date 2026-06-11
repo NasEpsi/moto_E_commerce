@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useCart } from '../hooks/useCart'
 import { getProductById } from '../services/firestoreService'
+import { formatPrice } from '../utils/formatters'
 
 function ProductDetail() {
   const { id } = useParams()
+  const { addToCart } = useCart()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    async function loadProduct() {
-      try {
-        setLoading(true)
-        setError('')
-        const loadedProduct = await getProductById(id)
+    let isCancelled = false
+
+    getProductById(id)
+      .then((loadedProduct) => {
+        if (isCancelled) {
+          return
+        }
 
         if (!loadedProduct) {
           setError('Produit introuvable.')
@@ -21,25 +26,43 @@ function ProductDetail() {
         }
 
         setProduct(loadedProduct)
-      } catch {
-        setError("Impossible de charger la fiche produit pour l'instant.")
-      } finally {
-        setLoading(false)
-      }
-    }
+        setError('')
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setError('Impossible de charger la fiche produit pour le moment.')
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false)
+        }
+      })
 
-    loadProduct()
+    return () => {
+      isCancelled = true
+    }
   }, [id])
 
+  const technicalAttributes = useMemo(
+    () =>
+      Object.entries(product?.attributs ?? {}).filter(([key]) => key !== 'description'),
+    [product],
+  )
+
   if (loading) {
-    return <p className="status-card">Chargement du produit...</p>
+    return (
+      <div className="page">
+        <div className="panel page-message">Chargement du produit...</div>
+      </div>
+    )
   }
 
   if (error || !product) {
     return (
       <div className="page">
-        <p className="status-card error">{error || 'Produit introuvable.'}</p>
-        <Link to="/" className="button button-secondary">
+        <div className="form-feedback error">{error || 'Produit introuvable.'}</div>
+        <Link to="/catalogue" className="button button-secondary">
           Retour au catalogue
         </Link>
       </div>
@@ -48,39 +71,68 @@ function ProductDetail() {
 
   return (
     <div className="page">
-      <Link to="/" className="back-link">
+      <Link to="/catalogue" className="back-link">
         Retour au catalogue
       </Link>
 
-      <section className="detail-card">
+      <section className="detail-page-layout">
         <div className="detail-image">
           <img src={product.image} alt={product.nom} />
         </div>
 
         <div className="detail-content">
-          <span className="product-badge">{product.categorie}</span>
+          <p className="product-meta">
+            <span className="product-badge">{product.categorie}</span>
+            <span>{product.marque}</span>
+          </p>
           <h1>{product.nom}</h1>
-          <p className="detail-brand">Marque : {product.marque}</p>
-          <p className="detail-price">{Number(product.prix || 0).toFixed(2)} €</p>
+          <p className="detail-description">
+            {product.attributs?.description ??
+              'Piece selectionnee pour offrir un excellent compromis entre durabilite, precision et fiabilite au quotidien.'}
+          </p>
 
-          <div className="detail-block">
-            <h2>Attributs</h2>
-            <ul className="detail-list">
-              {Object.entries(product.attributs ?? {}).map(([key, value]) => (
-                <li key={key}>
-                  <strong>{key}</strong>
-                  <span>{value}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="detail-price-row">
+            <p className="detail-price">{formatPrice(product.prix)}</p>
+            <span>TTC</span>
+          </div>
+
+          <div className="detail-actions">
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => addToCart(product)}
+            >
+              Ajouter au panier
+            </button>
+            <Link to="/panier" className="button button-secondary">
+              Voir le panier
+            </Link>
           </div>
 
           <div className="detail-block">
-            <h2>Compatibilites</h2>
+            <h2>Caracteristiques techniques</h2>
+            {technicalAttributes.length > 0 ? (
+              <ul className="detail-list">
+                {technicalAttributes.map(([key, value]) => (
+                  <li key={key}>
+                    <strong>{key}</strong>
+                    <span>{value}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="detail-placeholder">
+                Les informations techniques seront precisees pour cette reference.
+              </p>
+            )}
+          </div>
+
+          <div className="detail-block">
+            <h2>Compatibilites moto</h2>
             <div className="compatibility-list">
               {(product.compatibilites ?? []).map((compatibility) => (
                 <span key={compatibility} className="compatibility-item">
-                  {compatibility}
+                  + {compatibility}
                 </span>
               ))}
             </div>

@@ -6,12 +6,14 @@ const emptyForm = {
   categorie: '',
   prix: '',
   image: '',
+  description: '',
   attributsText: '',
   compatibilitesText: '',
 }
 
 function formatAttributes(attributes = {}) {
   return Object.entries(attributes)
+    .filter(([key]) => key !== 'description')
     .map(([key, value]) => `${key}: ${value}`)
     .join('\n')
 }
@@ -31,13 +33,13 @@ function createFormState(product) {
     categorie: product.categorie ?? '',
     prix: product.prix ?? '',
     image: product.image ?? '',
+    description: product.attributs?.description ?? '',
     attributsText: formatAttributes(product.attributs),
     compatibilitesText: formatCompatibilities(product.compatibilites),
   }
 }
 
 function parseAttributes(attributesText) {
-  // Format attendu dans le textarea : "cle: valeur" sur une ligne.
   return attributesText
     .split('\n')
     .map((line) => line.trim())
@@ -83,16 +85,21 @@ function ProductForm({ initialProduct, onSubmit, onCancel, isSubmitting }) {
       categorie: formData.categorie.trim(),
       prix: Number.parseFloat(formData.prix) || 0,
       image: formData.image.trim(),
-      attributs: parseAttributes(formData.attributsText),
+      attributs: {
+        ...parseAttributes(formData.attributsText),
+        ...(formData.description.trim()
+          ? { description: formData.description.trim() }
+          : {}),
+      },
       compatibilites: parseCompatibilities(formData.compatibilitesText),
     })
   }
 
   return (
-    <form className="admin-form" onSubmit={handleSubmit}>
+    <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-grid">
         <label className="field">
-          <span>Nom</span>
+          <span>Nom du produit</span>
           <input
             type="text"
             name="nom"
@@ -114,24 +121,24 @@ function ProductForm({ initialProduct, onSubmit, onCancel, isSubmitting }) {
         </label>
 
         <label className="field">
-          <span>Categorie</span>
-          <input
-            type="text"
-            name="categorie"
-            value={formData.categorie}
-            onChange={handleChange}
-            required
-          />
-        </label>
-
-        <label className="field">
-          <span>Prix</span>
+          <span>Prix (€)</span>
           <input
             type="number"
             name="prix"
             min="0"
             step="0.01"
             value={formData.prix}
+            onChange={handleChange}
+            required
+          />
+        </label>
+
+        <label className="field">
+          <span>Categorie</span>
+          <input
+            type="text"
+            name="categorie"
+            value={formData.categorie}
             onChange={handleChange}
             required
           />
@@ -151,7 +158,18 @@ function ProductForm({ initialProduct, onSubmit, onCancel, isSubmitting }) {
       </label>
 
       <label className="field">
-        <span>Attributs</span>
+        <span>Description</span>
+        <textarea
+          name="description"
+          rows="4"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Description detaillee de la piece..."
+        />
+      </label>
+
+      <label className="field">
+        <span>Caracteristiques</span>
         <textarea
           name="attributsText"
           rows="5"
@@ -173,7 +191,7 @@ function ProductForm({ initialProduct, onSubmit, onCancel, isSubmitting }) {
       </label>
 
       <div className="form-actions">
-        <button type="submit" className="button" disabled={isSubmitting}>
+        <button type="submit" className="button button-primary" disabled={isSubmitting}>
           {isSubmitting
             ? 'Enregistrement...'
             : initialProduct

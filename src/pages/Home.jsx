@@ -1,108 +1,142 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import CategoryFilter from '../components/CategoryFilter'
 import ProductCard from '../components/ProductCard'
 import SearchBar from '../components/SearchBar'
 import { getProducts } from '../services/firestoreService'
 
-function Home() {
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80'
+
+function Home({ variant = 'home' }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [searchName, setSearchName] = useState('')
-  const [searchBrand, setSearchBrand] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Toutes')
+  const catalogueRef = useRef(null)
+  const showHero = variant === 'home'
 
   useEffect(() => {
-    async function loadProducts() {
-      try {
-        setLoading(true)
-        setError('')
-        const loadedProducts = await getProducts()
-        setProducts(loadedProducts)
-      } catch (error) {
-        console.error("Erreur Firestore :", error)
-        setError(`Erreur : ${error.message}`)
-      } finally {
-        setLoading(false)
-      }
-    }
+    let isCancelled = false
 
-    loadProducts()
+    getProducts()
+      .then((loadedProducts) => {
+        if (!isCancelled) {
+          setProducts(loadedProducts)
+          setError('')
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setError('Le catalogue est temporairement indisponible.')
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
   }, [])
 
-  const categories = [...new Set(products.map((product) => product.categorie))].sort()
+  const categories = useMemo(
+    () => [...new Set(products.map((product) => product.categorie))].sort(),
+    [products],
+  )
 
-  const filteredProducts = products.filter((product) => {
-    const matchesName = (product.nom || '')
-      .toLowerCase()
-      .includes(searchName.toLowerCase())
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase()
 
-    const matchesBrand = (product.marque || '')
-      .toLowerCase()
-      .includes(searchBrand.toLowerCase())
-    const matchesCategory =
-      selectedCategory === 'Toutes' || product.categorie === selectedCategory
+    return products.filter((product) => {
+      const combinedText = [
+        product.nom,
+        product.marque,
+        product.categorie,
+        ...(product.compatibilites ?? []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
 
-    return matchesName && matchesBrand && matchesCategory
-  })
+      const matchesSearch = combinedText.includes(normalizedSearch)
+      const matchesCategory =
+        selectedCategory === 'Toutes' || product.categorie === selectedCategory
+
+      return matchesSearch && matchesCategory
+    })
+  }, [products, searchQuery, selectedCategory])
+
+  function scrollToCatalogue() {
+    catalogueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="page">
-      <section className="hero-panel">
-        <div>
-          <p className="eyebrow">MotoParts Catalog</p>
-          <h1>Catalogue responsive de pieces moto avec React et Firestore</h1>
-          <p className="hero-copy">
-            Recherchez rapidement des pieces par nom, marque et categorie, puis
-            consultez leur fiche detaillee.
-          </p>
-        </div>
+      {showHero ? (
+        <section className="hero-section">
+          <div className="hero-copy-block">
+            <span className="section-kicker">Catalogue professionnel</span>
+            <h1>Trouvez les pieces adaptees a votre moto</h1>
+            <p>
+              Catalogue de pieces moto : freinage, pneus, transmission, eclairage
+              et accessoires. Une selection rigoureuse de marques reconnues pour la
+              fiabilite et la performance.
+            </p>
 
-        <div className="hero-highlight">
-          <span>Collection</span>
-          <strong>produits</strong>
-          <p>Catalogue charge directement depuis Firestore.</p>
-        </div>
-      </section>
-
-      <SearchBar
-        searchName={searchName}
-        searchBrand={searchBrand}
-        onSearchNameChange={setSearchName}
-        onSearchBrandChange={setSearchBrand}
-      />
-
-      <CategoryFilter
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-      />
-
-      {loading ? <p className="status-card">Chargement du catalogue...</p> : null}
-      {error ? <p className="status-card error">{error}</p> : null}
-
-      {!loading && !error ? (
-        <section className="catalog-section">
-          <div className="section-heading">
-            <div>
-              <h2>Produits disponibles</h2>
-              <p>{filteredProducts.length} produit(s) affiche(s)</p>
-            </div>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSubmit={scrollToCatalogue}
+            />
           </div>
 
-          {filteredProducts.length > 0 ? (
+          <div className="panel hero-visual">
+            <img src={HERO_IMAGE} alt="MotoParts hero" />
+          </div>
+        </section>
+      ) : (
+        <section className="catalogue-header">
+          <h1>Catalogue complet</h1>
+          <p>Filtrez par categorie ou recherchez par nom, marque ou modele.</p>
+          <SearchBar value={searchQuery} onChange={setSearchQuery} compact />
+        </section>
+      )}
+
+      <section className="catalog-section" ref={catalogueRef}>
+        <div className="section-heading">
+          <div>
+            <h2>{showHero ? 'Notre catalogue' : 'Produits disponibles'}</h2>
+            <p>{filteredProducts.length} piece(s) disponible(s)</p>
+          </div>
+        </div>
+
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+        />
+
+        {loading ? <div className="panel page-message">Chargement du catalogue...</div> : null}
+        {error ? <div className="form-feedback error">{error}</div> : null}
+
+        {!loading && !error ? (
+          filteredProducts.length > 0 ? (
             <div className="product-grid">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (
-            <p className="status-card">
-              Aucun produit ne correspond a votre recherche.
-            </p>
-          )}
-        </section>
-      ) : null}
+            <div className="panel empty-panel">
+              <h3>Aucun produit ne correspond a votre recherche.</h3>
+              <p>Essayez une autre categorie ou un autre mot-cle.</p>
+            </div>
+          )
+        ) : null}
+      </section>
     </div>
   )
 }
