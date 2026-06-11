@@ -15,9 +15,10 @@ function CategoryFilter({ categories, selectedCategory, onCategoryChange }) {
           Toutes
         </button>
 
-        {categories.map((category) => (
-          <button
-            key={category}
+        {categories
+          .filter(Boolean)
+          .map((category) => (
+            <button key={category}
             type="button"
             className={selectedCategory === category ? 'chip active' : 'chip'}
             onClick={() => onCategoryChange(category)}

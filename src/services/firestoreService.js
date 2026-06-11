@@ -11,9 +11,10 @@ import { db } from '../firebase'
 const COLLECTION_NAME = 'produits'
 
 function sortProducts(products) {
-  return [...products].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  return [...products].sort((a, b) =>
+    (a.nom || '').localeCompare(b.nom || '', 'fr')
+  )
 }
-
 function mapSnapshot(documentSnapshot) {
   return {
     id: documentSnapshot.id,
