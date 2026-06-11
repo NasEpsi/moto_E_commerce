@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useCart } from '../hooks/useCart'
 
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { itemCount } = useCart()
 
   function closeMenu() {
     setIsMenuOpen(false)
@@ -14,8 +16,8 @@ function Navbar() {
         <NavLink to="/" className="brand" onClick={closeMenu}>
           <span className="brand-mark">MP</span>
           <div>
-            <strong>MotoParts Catalog</strong>
-            <small>Catalogue de pieces moto</small>
+            <strong>MotoParts</strong>
+            <small>CATALOG</small>
           </div>
         </NavLink>
 
@@ -36,15 +38,31 @@ function Navbar() {
             to="/"
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
             onClick={closeMenu}
+            end
           >
             Accueil
+          </NavLink>
+          <NavLink
+            to="/catalogue"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            onClick={closeMenu}
+          >
+            Catalogue
           </NavLink>
           <NavLink
             to="/admin"
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
             onClick={closeMenu}
           >
-            Gestion catalogue
+            Gestion
+          </NavLink>
+          <NavLink
+            to="/panier"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            onClick={closeMenu}
+          >
+            Panier
+            {itemCount > 0 ? <span className="nav-count">{itemCount}</span> : null}
           </NavLink>
         </nav>
       </div>

@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
+import { signOut } from 'firebase/auth'
+import { useNavigate } from 'react-router-dom'
 import ProductForm from '../components/ProductForm'
+import { auth } from '../firebase'
 import {
   createProduct,
   deleteProduct,
   getProducts,
   updateProduct,
 } from '../services/firestoreService'
+import { formatPrice } from '../utils/formatters'
 
 function Admin() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [editingProduct, setEditingProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -23,7 +28,7 @@ function Admin() {
       const loadedProducts = await getProducts()
       setProducts(loadedProducts)
     } catch {
-      setError("Impossible de charger la gestion du catalogue pour l'instant.")
+      setError('Impossible de charger les produits pour le moment.')
     } finally {
       setLoading(false)
     }
@@ -34,31 +39,31 @@ function Admin() {
 
     getProducts()
       .then((loadedProducts) => {
-        if (isCancelled) {
-          return
+        if (!isCancelled) {
+          setProducts(loadedProducts)
+          setError('')
         }
-
-        setProducts(loadedProducts)
       })
       .catch(() => {
-        if (isCancelled) {
-          return
+        if (!isCancelled) {
+          setError('Impossible de charger les produits pour le moment.')
         }
-
-        setError("Impossible de charger la gestion du catalogue pour l'instant.")
       })
       .finally(() => {
-        if (isCancelled) {
-          return
+        if (!isCancelled) {
+          setLoading(false)
         }
-
-        setLoading(false)
       })
 
     return () => {
       isCancelled = true
     }
   }, [])
+
+  async function handleLogout() {
+    await signOut(auth)
+    navigate('/login', { replace: true })
+  }
 
   async function handleSubmit(productData) {
     try {
@@ -85,11 +90,7 @@ function Admin() {
   }
 
   async function handleDelete(productId) {
-    const confirmed = window.confirm(
-      'Voulez-vous vraiment supprimer ce produit ?',
-    )
-
-    if (!confirmed) {
+    if (!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) {
       return
     }
 
@@ -101,6 +102,7 @@ function Admin() {
 
       if (editingProduct?.id === productId) {
         setEditingProduct(null)
+        setFormKey((currentValue) => currentValue + 1)
       }
 
       await loadProducts()
@@ -113,30 +115,22 @@ function Admin() {
     <div className="page admin-page">
       <section className="admin-header">
         <div>
-          <p className="eyebrow">Administration</p>
+          <p className="section-kicker">Espace administrateur</p>
           <h1>Gestion du catalogue</h1>
-          <p>
-            Ajoutez, modifiez ou supprimez des pieces moto depuis une interface
-            simple.
-          </p>
+          <p>Ajoutez, modifiez ou retirez les produits affichés dans le catalogue.</p>
         </div>
 
-        <div className="hero-highlight">
-          <span>Stockage</span>
-          <strong>Firestore</strong>
-          <p>Les changements sont enregistres dans la collection `produits`.</p>
-        </div>
+        <button type="button" className="button button-secondary" onClick={handleLogout}>
+          Déconnexion
+        </button>
       </section>
 
       <section className="admin-layout">
-        <div className="admin-panel">
+        <div className="panel admin-panel">
           <div className="section-heading">
             <div>
               <h2>{editingProduct ? 'Modifier un produit' : 'Ajouter un produit'}</h2>
-              <p>
-                Remplissez les champs principaux puis saisissez les attributs et
-                compatibilites ligne par ligne.
-              </p>
+              <p>Renseignez les informations du nouveau produit.</p>
             </div>
           </div>
 
@@ -151,32 +145,33 @@ function Admin() {
             isSubmitting={isSubmitting}
           />
 
-          {message ? <p className="status-card success">{message}</p> : null}
-          {error ? <p className="status-card error">{error}</p> : null}
+          {message ? <div className="form-feedback success">{message}</div> : null}
+          {error ? <div className="form-feedback error">{error}</div> : null}
         </div>
 
-        <div className="admin-panel">
-          <div className="section-heading">
+        <div className="panel admin-panel">
+          <div className="section-heading admin-list-heading">
             <div>
               <h2>Produits existants</h2>
-              <p>{products.length} produit(s) dans le catalogue</p>
             </div>
+            <p>{products.length} produits</p>
           </div>
 
-          {loading ? <p className="status-card">Chargement des produits...</p> : null}
+          {loading ? <div className="panel page-message">Chargement des produits...</div> : null}
 
           {!loading ? (
             <div className="admin-product-list">
               {products.map((product) => (
                 <article key={product.id} className="admin-product-card">
                   <img src={product.image} alt={product.nom} />
-                  <div>
+
+                  <div className="admin-product-content">
                     <h3>{product.nom}</h3>
                     <p>
-                      {product.marque} • {product.categorie}
+                      {product.marque} - {product.categorie} - {formatPrice(product.prix)}
                     </p>
-                    <strong>{product.prix.toFixed(2)} EUR</strong>
                   </div>
+
                   <div className="admin-card-actions">
                     <button
                       type="button"

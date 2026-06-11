@@ -1,11 +1,6 @@
 function CategoryFilter({ categories, selectedCategory, onCategoryChange }) {
   return (
-    <section className="filters-card">
-      <div className="filter-heading">
-        <h2>Categories</h2>
-        <p>Le filtre se construit automatiquement a partir des produits disponibles.</p>
-      </div>
-
+    <div className="category-filter">
       <div className="category-list">
         <button
           type="button"
@@ -15,10 +10,9 @@ function CategoryFilter({ categories, selectedCategory, onCategoryChange }) {
           Toutes
         </button>
 
-        {categories
-          .filter(Boolean)
-          .map((category) => (
-            <button key={category}
+        {categories.filter(Boolean).map((category) => (
+          <button
+            key={category}
             type="button"
             className={selectedCategory === category ? 'chip active' : 'chip'}
             onClick={() => onCategoryChange(category)}
@@ -27,7 +21,7 @@ function CategoryFilter({ categories, selectedCategory, onCategoryChange }) {
           </button>
         ))}
       </div>
-    </section>
+    </div>
   )
 }
 
