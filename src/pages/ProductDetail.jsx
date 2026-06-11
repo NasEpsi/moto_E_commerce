@@ -61,7 +61,7 @@ function ProductDetail() {
           <span className="product-badge">{product.categorie}</span>
           <h1>{product.nom}</h1>
           <p className="detail-brand">Marque : {product.marque}</p>
-          <p className="detail-price">{product.prix.toFixed(2)} EUR</p>
+          <p className="detail-price">{Number(product.prix || 0).toFixed(2)} €</p>
 
           <div className="detail-block">
             <h2>Attributs</h2>

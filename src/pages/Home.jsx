@@ -19,8 +19,9 @@ function Home() {
         setError('')
         const loadedProducts = await getProducts()
         setProducts(loadedProducts)
-      } catch {
-        setError("Impossible de charger le catalogue pour l'instant.")
+      } catch (error) {
+        console.error("Erreur Firestore :", error)
+        setError(`Erreur : ${error.message}`)
       } finally {
         setLoading(false)
       }
@@ -32,8 +33,11 @@ function Home() {
   const categories = [...new Set(products.map((product) => product.categorie))].sort()
 
   const filteredProducts = products.filter((product) => {
-    const matchesName = product.nom.toLowerCase().includes(searchName.toLowerCase())
-    const matchesBrand = product.marque
+    const matchesName = (product.nom || '')
+      .toLowerCase()
+      .includes(searchName.toLowerCase())
+
+    const matchesBrand = (product.marque || '')
       .toLowerCase()
       .includes(searchBrand.toLowerCase())
     const matchesCategory =

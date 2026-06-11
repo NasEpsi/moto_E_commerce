@@ -12,7 +12,7 @@ function ProductCard({ product }) {
         <h3>{product.nom}</h3>
         <p className="product-brand">{product.marque}</p>
         <div className="product-card-footer">
-          <strong>{product.prix.toFixed(2)} EUR</strong>
+          <strong>{Number(product.prix || 0).toFixed(2)} €</strong>
           <Link to={`/produit/${product.id}`} className="button button-secondary">
             Voir le detail
           </Link>
